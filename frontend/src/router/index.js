@@ -6,7 +6,7 @@ import UserManager from '@/components/UserManager.vue'
 const routes = [
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/user-manager', component: UserManager },
+  { path: '/users', component: UserManager },
 ]
 
 const router = createRouter({

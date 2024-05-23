@@ -9,18 +9,18 @@ import axios from 'axios';
 axios.defaults.baseURL = 'http://localhost:5294/api/';
 //Toast
 const toAst = {
-    position: "top-right",
-    timeout: 5000,
-    closeOnClick: true,
-    pauseOnFocusLoss: true,
-    pauseOnHover: true,
-    draggable: true,
-    draggablePercent: 0.6,
-    showCloseButtonOnHover: false,
-    hideProgressBar: true,
-    closeButton: "button",
-    icon: true,
-    rtl: false
+  position: "bottom-center",
+  timeout: 10000,
+  closeOnClick: true,
+  pauseOnFocusLoss: true,
+  pauseOnHover: true,
+  draggable: false,
+  draggablePercent: 2,
+  showCloseButtonOnHover: true,
+  hideProgressBar: false,
+  closeButton: "button",
+  icon: true,
+  rtl: false
 }
 const app = createApp(App);
 

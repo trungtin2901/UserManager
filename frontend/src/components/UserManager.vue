@@ -39,12 +39,12 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="user in paginatedUsers" :key="user.id">
+            <tr v-for="user in users" :key="user.id">
               <td>
                 <input type="checkbox" v-model="selectedUsers" :value="user.id">
               </td>
               <td>{{ user.id }}</td>
-              <td>{{ user.name }}</td>
+              <td>{{ user.username }}</td>
               <td>{{ user.phone }}</td>
               <td>{{ user.email }}</td>
               <td>{{ user.address }}</td>
@@ -55,20 +55,24 @@
           </tbody>
         </table>
         <div class="pagination">
-          <button @click="prevPage" :disabled="currentPage === 5" class="pagination-info">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="icon-left">
-              <path d="M9.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l192 192c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L77.3 256 246.6 86.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-192 192z"/>
-            </svg>
+          <button @click="prevPage" :disabled="currentPage === 1" class="pagination-info">
             Prev
           </button>
-          <span v-for="page in totalPages" :key="page" @click="goToPage(page)"
+          <span v-for="page in visiblePages" :key="page" @click="goToPage(page)"
             :class="{ active: currentPage === page }">{{ page }}</span>
-          <button @click="nextPage" :disabled="currentPage === totalPages" class="pagination-info">
+          <button @click="nextPage" :disabled="currentPage >= totalPages" class="pagination-info">
             Next
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512" class="icon-right">
-              <path d="M310.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-192 192c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L242.7 256 73.4 86.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l192 192z"/>
-            </svg>
           </button>
+        </div>
+        <div v-if="showUserDetail" class="modal-background"></div>
+
+        <div v-if="showUserDetail" class="user-detail-modal">
+          <h3>User Details</h3>
+          <p><strong>Name:</strong> {{ selectedUser.name }}</p>
+          <p><strong>Email:</strong> {{ selectedUser.email }}</p>
+          <p><strong>Update Date:</strong> {{ new Date(selectedUser.updatedAt).toLocaleString() }}</p>
+          <p><strong>Create Date:</strong> {{ new Date(selectedUser.createdAt).toLocaleString() }}</p>
+          <button @click="closeUserDetail" class="close-button">x</button>
         </div>
       </main>
     </div>
@@ -86,37 +90,61 @@ export default {
     return {
       searchQuery: '',
       currentPage: 1,
-      usersPerPage: 5,
+      usersPerPage: 6,
       selectAll: false,
       selectedUsers: [],
-      users: []
+      showUserDetail: false,
+      users: [],
+      totalPages: 1
     };
   },
   computed: {
-    prevPage() {
-      if (this.currentPage > 1) this.currentPage--;
-    },
-    nextPage() {
-      if (this.currentPage < this.totalPages) this.currentPage++;
-    },
     paginatedUsers() {
       const start = (this.currentPage - 1) * this.usersPerPage;
       const end = start + this.usersPerPage;
       return this.users.slice(start, end);
     },
-    totalPages() {
-      return Math.ceil(this.users.length / this.usersPerPage);
+    visiblePages() {
+      const pages = [];
+      if (this.totalPages <= 4) {
+        for (let i = 1; i <= this.totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        if (this.currentPage <= 2) {
+          pages.push(1, 2, '...', this.totalPages);
+        } else if (this.currentPage >= this.totalPages - 1) {
+          pages.push(1, '...', this.totalPages - 1, this.totalPages);
+        } else {
+          pages.push(1, '...', this.currentPage, '...', this.totalPages);
+        }
+      }
+      return pages;
     }
   },
   methods: {
     async fetchUsers() {
-      const response = await axios.get('/users/allusers');
-      this.users = response.data.data;
+      try {
+        const response = await axios.get(`http://localhost:5294/api/users/allusers?pageNumber=${this.currentPage}&pageSize=${this.usersPerPage}`);
+        const data = response.data;
+        this.users = data.users;
+        this.totalPages = data.totalPages;
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
     },
     deleteUsers() {
       this.users = this.users.filter(user => !this.selectedUsers.includes(user.id));
       this.selectedUsers = [];
       this.selectAll = false;
+    },
+    viewUser(userId) {
+      this.selectedUser = this.users.find(user => user.userID === userId);
+      this.showUserDetail = true;
+    },
+    closeUserDetail() {
+      this.showUserDetail = false;
+      this.selectedUser = {};
     },
     createUser() {
       // Handle user creation logic here
@@ -131,14 +159,27 @@ export default {
       this.selectedUsers = this.selectAll ? this.users.map(user => user.id) : [];
     },
     prevPage() {
-      if (this.currentPage > 1) this.currentPage--;
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.fetchUsers(this.currentPage, this.usersPerPage);
+      }
     },
     nextPage() {
-      if (this.currentPage < this.totalPages) this.currentPage++;
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+        this.fetchUsers(this.currentPage, this.usersPerPage);
+      }
+    },
+    goToPage(page) {
+      if (page === '...') return;
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+        this.fetchUsers(this.currentPage, this.usersPerPage);
+      }
     }
   },
   mounted() {
-    this.fetchUsers();
+    this.fetchUsers(this.currentPage, this.usersPerPage);
   }
 };
 </script>
@@ -307,7 +348,27 @@ tbody td {
 .pagination span {
   padding: 10px 20px;
 }
+.pagination button:disabled {
+  background-color: #ccc;
+}
 
+.pagination span {
+  margin: 0 5px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.pagination .active {
+  font-weight: bold;
+  background-color: #dadcdd;
+  color: rgb(0, 0, 0);
+}
+
+.pagination span:hover:not(.active) {
+  background-color: #f0f0f0;
+}
 footer {
   display: flex;
   justify-content: space-between;
